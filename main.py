@@ -4,8 +4,8 @@ from ultralytics import YOLO
 # ----------------------------
 # Video input/output settings
 # ----------------------------
-input_video = "TestVideos/dashcam_video.mp4"
-output_video = "TestVideos/dashcam_video_Output.mp4"
+input_video = "potholeVid1.mp4"
+output_video = "potholeVid1_output.mp4"
 
 # ----------------------------
 # Load YOLOv8 models
@@ -59,7 +59,7 @@ while True:
         )
 
     # ---- YOLO inference for potholes ----
-    results_potholes = model_potholes(frame, conf=0.5, verbose=False)
+    results_potholes = model_potholes(frame, conf=0.2, verbose=False)
     for i, box in enumerate(results_potholes[0].boxes.xyxy):
         x1, y1, x2, y2 = map(int, box)
         conf = results_potholes[0].boxes.conf[i]
