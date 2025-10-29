@@ -1,7 +1,7 @@
 task: detect
 mode: train
-model: yolov8n.pt
-data: Pothole-detection-YOLOv8.v1i.yolov8/data.yaml
+model: pothole.pt
+data: Pothole.v1-raw.yolov8/data.yaml
 epochs: 100
 time: null
 patience: 10
