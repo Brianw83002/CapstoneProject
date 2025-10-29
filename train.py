@@ -8,12 +8,12 @@ def main():
         print(f"GPU device: {torch.cuda.get_device_name(0)}")
         print(f"CUDA version: {torch.version.cuda}")
 
-    # Load base model
-    model = YOLO("yolov8n.pt")
+    # Load current model
+    model = YOLO("pothole.pt")
 
     # Train on pothole dataset with GPU optimization
     model.train(
-        data="Pothole-detection-YOLOv8.v1i.yolov8/data.yaml", 
+        data="Pothole.v1-raw.yolov8/data.yaml", 
         epochs=100, 
         imgsz=640,
         device=0,              # Use GPU 0
@@ -36,7 +36,7 @@ def main():
     )
 
     # Save trained weights
-    model.save("pothole.pt")
+    model.save("potholeV2.pt")
 
     # Validate the model
     metrics = model.val()
