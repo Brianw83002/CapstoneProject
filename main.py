@@ -1,22 +1,43 @@
 import cv2
+import torch
 from ultralytics import YOLO
+import torchvision.transforms as transforms
+from road_classification import RoadDetectionCNN  # your CNN class
 
 # ----------------------------
-# Video input/output settings
+# Settings
 # ----------------------------
-input_video = "potholeVid1.mp4"
-output_video = "potholeVid1_output.mp4"
+input_video = "potholeVideo.mp4"
+output_video = "potholeVid_output.mp4"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # ----------------------------
-# Load YOLOv8 models
+# Load YOLO pothole model
 # ----------------------------
-model_objects = YOLO("yolov8n.pt")   # Default objects (cars, people, etc.)
-model_potholes = YOLO("pothole.pt")  # Potholes (replace with your trained model)
-
-# Force CPU usage
-device = "cpu"
-model_objects.to(device)
+model_potholes = YOLO("pothole.pt")  # your trained YOLO pothole model
 model_potholes.to(device)
+
+# ----------------------------
+# Load road classification model
+# ----------------------------
+model_classification = RoadDetectionCNN(num_classes=4)
+model_classification.load_state_dict(torch.load("road_classification_model.pth", map_location=device))
+model_classification.eval()
+model_classification.to(device)
+
+# Define road class names (match your dataset)
+model_classification.classes = ['D00', 'D10', 'D20', 'D40']
+
+# ----------------------------
+# Define transforms for CNN
+# ----------------------------
+transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((128, 128)),  # match training input size
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+])
 
 # ----------------------------
 # Video setup
@@ -39,40 +60,30 @@ while True:
 
     annotated_frame = frame.copy()
 
-    # ---- YOLO inference for objects ----
-    results_objects = model_objects(frame, conf=0.5, verbose=False)
-    for i, box in enumerate(results_objects[0].boxes.xyxy):
-        x1, y1, x2, y2 = map(int, box)
-        cls = int(results_objects[0].boxes.cls[i])
-        conf = results_objects[0].boxes.conf[i]
+    # ---- Road classification for this frame ----
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    input_tensor = transform(frame_rgb).unsqueeze(0).to(device)
+    with torch.no_grad():
+        outputs = model_classification(input_tensor)
+        _, predicted = torch.max(outputs, 1)
+        road_class_name = model_classification.classes[predicted.item()]
 
-        # Draw box (blue)
-        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-        cv2.putText(
-            annotated_frame,
-            f"{model_objects.names[cls]} {conf:.2f}",
-            (x1, y1 - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 255, 255),
-            2,
-        )
-
-    # ---- YOLO inference for potholes ----
+    # ---- YOLO pothole detection ----
     results_potholes = model_potholes(frame, conf=0.2, verbose=False)
     for i, box in enumerate(results_potholes[0].boxes.xyxy):
         x1, y1, x2, y2 = map(int, box)
-        conf = results_potholes[0].boxes.conf[i]
 
         # Draw box (red)
         cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        # Overlay road classification instead of confidence
         cv2.putText(
             annotated_frame,
-            f"Pothole {conf:.2f}",
+            f"Road: {road_class_name}",
             (x1, y1 - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
-            (0, 0, 255),
+            (0, 255, 0),  # green text
             2,
         )
 
