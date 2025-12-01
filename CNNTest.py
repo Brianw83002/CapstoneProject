@@ -5,6 +5,11 @@ from PIL import Image
 from road_classification import RoadDetectionCNN
 
 # ----------------------------
+# RUN main2.py FIRST
+# ----------------------------
+
+
+# ----------------------------
 # Settings
 # ----------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
