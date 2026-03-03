@@ -17,7 +17,7 @@ print(f"Using device: {device}")
 # ----------------------------
 # Load YOLO pothole model
 # ----------------------------
-model_potholes = YOLO("pothole.pt")
+model_potholes = YOLO("potholeV2.pt")
 model_potholes.to(device)
 
 # ----------------------------
