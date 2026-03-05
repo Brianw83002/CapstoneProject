@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 import os
 import torchvision.transforms as transforms
-from road_classification import RoadDetectionCNN
+from Model.road_classification import RoadDetectionCNN
 
 # ----------------------------
 # Device
@@ -17,7 +17,7 @@ print(f"Using device: {device}")
 # ----------------------------
 # Load YOLO model
 # ----------------------------
-model_potholes = YOLO("potholeV2.pt")
+model_potholes = YOLO("Model/potholeV2.pt")
 model_potholes.to(device)
 
 # ----------------------------
@@ -25,7 +25,7 @@ model_potholes.to(device)
 # ----------------------------
 model_classification = RoadDetectionCNN(num_classes=4)
 model_classification.load_state_dict(
-    torch.load("road_classification_model.pth", map_location=device)
+    torch.load("Model/road_classification_model.pth", map_location=device)
 )
 model_classification.eval()
 model_classification.to(device)
