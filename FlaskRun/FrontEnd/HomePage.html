@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="left-panel">
+        <h2>Pothole Detection Manager</h2>
+
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <div class="upload-box">
+                <input type="file" name="video" accept=".mp4,.avi,.mov" required>
+            </div>
+            <button type="submit">Upload and Process</button>
+        </form>
+
+        {% if processing %}
+            <h3>Processing Status</h3>
+            <p id="status-text">Processing video...</p>
+
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+
+            <p id="progress-text">0%</p>
+        {% endif %}
+    </div>
+
+    <div class="right-panel">
+        <h2>
+            {% if processing %}
+                Uploaded Video
+            {% else %}
+                Processed Video
+            {% endif %}
+        </h2>
+
+        {% if processing and original_video %}
+            <video controls>
+                <source src="{{ url_for('static', filename=original_video) }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <p>Video is being processed...</p>
+
+        {% elif processed_video %}
+            <video controls autoplay>
+                <source src="{{ url_for('static', filename=processed_video) }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+
+        {% else %}
+            <p>No video yet.</p>
+        {% endif %}
+
+        <h3>Detected Potholes</h3>
+        <div class="crops">
+            {% if crop_paths %}
+                {% for crop in crop_paths %}
+                    <img class="crop-img" src="{{ url_for('static', filename=crop) }}" alt="Pothole Crop">
+                {% endfor %}
+            {% else %}
+                <p>No pothole crops yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+{% if processing and task_id %}
+<script>
+    function checkProgress() {
+        fetch("/status/{{ task_id }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "processing" || data.status === "queued") {
+                    document.getElementById("status-text").textContent = "Processing video...";
+                    document.getElementById("progress-text").textContent = data.progress + "%";
+                    document.getElementById("progress-bar").style.width = data.progress + "%";
+                } else if (data.status === "done") {
+                    document.getElementById("progress-text").textContent = "100%";
+                    document.getElementById("progress-bar").style.width = "100%";
+                    window.location.href = "/result/{{ task_id }}";
+                }
+            })
+            .catch(error => {
+                console.error("Error checking status:", error);
+            });
+    }
+
+    setInterval(checkProgress, 500);
+</script>
+{% endif %}
+
+</body>
+</html>
