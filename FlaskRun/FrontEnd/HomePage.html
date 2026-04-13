@@ -78,7 +78,11 @@
         fetch("/status/{{ task_id }}")
             .then(response => response.json())
             .then(data => {
-                if (data.status === "processing" || data.status === "queued") {
+                if (data.status === "encoding") {
+                    document.getElementById("status-text").textContent = "Encoding video for playback...";
+                    document.getElementById("progress-text").textContent = "Almost done...";
+                    document.getElementById("progress-bar").style.width = "100%";
+                } else if (data.status === "processing" || data.status === "queued") {
                     document.getElementById("status-text").textContent = "Processing video...";
                     document.getElementById("progress-text").textContent = data.progress + "%";
                     document.getElementById("progress-bar").style.width = data.progress + "%";
@@ -86,6 +90,8 @@
                     document.getElementById("progress-text").textContent = "100%";
                     document.getElementById("progress-bar").style.width = "100%";
                     window.location.href = "/result/{{ task_id }}";
+                } else if (data.status === "error") {
+                    document.getElementById("status-text").textContent = "Error during processing. Please try again.";
                 }
             })
             .catch(error => {

@@ -7,6 +7,7 @@ import torchvision.transforms as transforms
 import sys
 import threading
 import uuid
+import subprocess
 
 # opens Model Folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,8 +64,9 @@ def process_video(input_path, filename, task_id):
     FRAME_SKIP = 2
 
     base_name = os.path.splitext(filename)[0]
-    output_filename = f"processed_{base_name}.mp4"
-    output_path = os.path.join(app.config["OUTPUT_FOLDER"], output_filename)
+    raw_output_path = os.path.join(app.config["OUTPUT_FOLDER"], f"raw_{base_name}.avi")
+    web_output_filename = f"processed_{base_name}.mp4"
+    web_output_path = os.path.join(app.config["OUTPUT_FOLDER"], web_output_filename)
     crop_paths = []
 
     cap = cv2.VideoCapture(input_path)
@@ -79,8 +81,9 @@ def process_video(input_path, filename, task_id):
     if total_frames <= 0:
         total_frames = 1
 
-    fourcc = cv2.VideoWriter_fourcc(*"avc1")
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    # Write to AVI with XVID as a reliable intermediate format
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    out = cv2.VideoWriter(raw_output_path, fourcc, fps, (width, height))
 
     frame_index = 0
     crop_index = 0
@@ -140,9 +143,35 @@ def process_video(input_path, filename, task_id):
     cap.release()
     out.release()
 
+    # Tell the frontend we're now encoding
+    tasks[task_id]["status"] = "encoding"
+    tasks[task_id]["progress"] = 100
+    
+    # Re-encode to browser-compatible H.264 MP4 using FFmpeg
+    result = subprocess.run([
+        "ffmpeg", "-y",
+        "-i", raw_output_path,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        web_output_path
+    ], capture_output=True, text=True)
+
+    if result.returncode != 0:
+        print("FFmpeg error:", result.stderr)
+        tasks[task_id]["status"] = "error"
+        tasks[task_id]["error"] = "FFmpeg re-encoding failed"
+        return
+
+    # Clean up the raw intermediate file
+    if os.path.exists(raw_output_path):
+        os.remove(raw_output_path)
+
     tasks[task_id]["status"] = "done"
     tasks[task_id]["progress"] = 100
-    tasks[task_id]["processed_video"] = f"outputs/{output_filename}"
+    tasks[task_id]["processed_video"] = f"outputs/{web_output_filename}"
     tasks[task_id]["crop_paths"] = crop_paths
 
 
@@ -219,6 +248,9 @@ def check_status(task_id):
 def result_page(task_id):
     if task_id not in tasks:
         return "Task not found", 404
+
+    if tasks[task_id]["status"] == "error":
+        return f"Processing failed: {tasks[task_id].get('error', 'Unknown error')}", 500
 
     if tasks[task_id]["status"] != "done":
         return redirect(url_for("processing_page", task_id=task_id))
