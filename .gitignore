@@ -9,3 +9,6 @@
 *.m4v
 *.mpg
 *.mpeg
+
+# Ignore everything in crops folder
+FlaskRun/static/crops/
