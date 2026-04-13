@@ -5,13 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pothole Detection Manager</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}">
 </head>
 <body>
 
 <div class="container">
 
     <div class="left-panel">
-        <h2>Pothole Detection Manager</h2>
+
+        <div class="title-row">
+            <img src="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}" 
+                alt="Logo" 
+                class="panel-image">
+
+            <h2>Pothole Detection Manager</h2>
+        </div>
+
 
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <div class="upload-box">
@@ -32,7 +41,8 @@
         {% endif %}
     </div>
 
-    <div class="right-panel">
+   <div class="right-panel">
+    <div class="video-section">
         <h2>
             {% if processing %}
                 Uploaded Video
@@ -57,7 +67,9 @@
         {% else %}
             <p>No video yet.</p>
         {% endif %}
+    </div>
 
+    <div class="pothole-section">
         <h3>Detected Potholes</h3>
         <div class="crops">
             {% if crop_paths %}
@@ -69,6 +81,7 @@
             {% endif %}
         </div>
     </div>
+</div>
 
 </div>
 

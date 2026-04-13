@@ -24,6 +24,17 @@ body {
     box-sizing: border-box;
 }
 
+.panel-image {
+    width: 40px;    
+    height: auto;     
+}
+
+.title-row {
+    display: flex;
+    align-items: center;   /* vertically center image + text */
+    gap: 10px;             /* space between image and text */
+}
+
 h2, h3 {
     margin-top: 15px;
 }
@@ -34,6 +45,13 @@ button {
     margin: 8px 0;
     cursor: pointer;
 }
+
+.pothole-section h3 {
+    margin-top: 400px;
+    margin-bottom: 12px;
+    
+}
+
 
 video {
     width: 640px;
