@@ -145,10 +145,10 @@ def process_video(input_path, filename, task_id):
 
     # Tell the frontend we're now encoding
     tasks[task_id]["status"] = "encoding"
-    tasks[task_id]["progress"] = 100
-    
-    # Re-encode to browser-compatible H.264 MP4 using FFmpeg
-    result = subprocess.run([
+    tasks[task_id]["progress"] = 0
+
+    # Re-encode with FFmpeg, parsing progress from stderr
+    process = subprocess.Popen([
         "ffmpeg", "-y",
         "-i", raw_output_path,
         "-c:v", "libx264",
@@ -157,10 +157,21 @@ def process_video(input_path, filename, task_id):
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
         web_output_path
-    ], capture_output=True, text=True)
+    ], stderr=subprocess.PIPE, text=True)
 
-    if result.returncode != 0:
-        print("FFmpeg error:", result.stderr)
+    for line in process.stderr:
+        if "frame=" in line:
+            try:
+                encoded_frame = int(line.split("frame=")[1].strip().split()[0])
+                encode_progress = min(int((encoded_frame / total_frames) * 100), 99)
+                tasks[task_id]["progress"] = encode_progress
+            except (ValueError, IndexError):
+                pass
+
+    process.wait()
+
+    if process.returncode != 0:
+        print("FFmpeg encoding failed")
         tasks[task_id]["status"] = "error"
         tasks[task_id]["error"] = "FFmpeg re-encoding failed"
         return
