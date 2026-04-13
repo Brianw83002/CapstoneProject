@@ -104,7 +104,7 @@ def process_video(input_path, filename, task_id):
             continue
 
         annotated_frame = frame.copy()
-        results = model_potholes(frame, conf=0.2, verbose=False)
+        results = model_potholes(frame, conf=0.2, imgsz=512, verbose=False)
 
         for box in results[0].boxes.xyxy:
             x1, y1, x2, y2 = map(int, box)
@@ -152,7 +152,7 @@ def process_video(input_path, filename, task_id):
         "ffmpeg", "-y",
         "-i", raw_output_path,
         "-c:v", "libx264",
-        "-preset", "fast",
+        "-preset", "ultrafast",
         "-crf", "23",
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
