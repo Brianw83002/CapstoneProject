@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+import static_ffmpeg
 import os
 import cv2
 import torch
@@ -8,8 +9,6 @@ import sys
 import threading
 import uuid
 import subprocess
-
-ffmpeg_path = os.path.join(BASE_DIR, "bin", "ffmpeg")
 
 # opens Model Folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -149,6 +148,8 @@ def process_video(input_path, filename, task_id):
     tasks[task_id]["status"] = "encoding"
     tasks[task_id]["progress"] = 0
 
+    ffmpeg_path = static_ffmpeg.get_or_fetch_platform_executables_else_raise()[0]
+
     # Re-encode with FFmpeg, parsing progress from stderr
     process = subprocess.Popen([
         ffmpeg_path, "-y",
@@ -285,8 +286,5 @@ def result_page(task_id):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Render provides PORT
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
-
-    ###app.run(debug=True)
