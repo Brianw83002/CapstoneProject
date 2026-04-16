@@ -9,6 +9,8 @@ import threading
 import uuid
 import subprocess
 
+ffmpeg_path = os.path.join(BASE_DIR, "bin", "ffmpeg")
+
 # opens Model Folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, ".."))
@@ -149,7 +151,7 @@ def process_video(input_path, filename, task_id):
 
     # Re-encode with FFmpeg, parsing progress from stderr
     process = subprocess.Popen([
-        "ffmpeg", "-y",
+        ffmpeg_path, "-y",
         "-i", raw_output_path,
         "-c:v", "libx264",
         "-preset", "ultrafast",
@@ -286,5 +288,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))  # Render provides PORT
     app.run(host="0.0.0.0", port=port)
 
-    
+
     ###app.run(debug=True)
