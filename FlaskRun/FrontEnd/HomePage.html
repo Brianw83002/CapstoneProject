@@ -11,78 +11,91 @@
 
 <div class="container">
 
+    <!-- ── Sidebar ── -->
     <div class="left-panel">
 
         <div class="title-row">
-            <img src="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}" 
-                alt="Logo" 
-                class="panel-image">
-
+            <img src="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}"
+                 alt="Pothole Detection Manager logo"
+                 class="panel-image">
             <h2>Pothole Detection Manager</h2>
         </div>
 
-
         <form action="/upload" method="POST" enctype="multipart/form-data">
-            <div class="upload-box">
-                <input type="file" name="video" accept=".mp4,.avi,.mov" required>
+            <div class="upload-box" role="region" aria-label="Video upload area">
+                <input type="file" name="video" id="video-input" accept=".mp4,.avi,.mov" required
+                       aria-label="Select a video file (.mp4, .avi, .mov)">
             </div>
-            <button type="submit">Upload and Process</button>
+            <button type="submit" aria-label="Upload and process video">
+                Run detection
+            </button>
         </form>
 
         {% if processing %}
-            <h3>Processing Status</h3>
-            <p id="status-text">Processing video...</p>
+            <h3>Processing Status
+                <span class="status-badge" aria-live="polite" aria-label="Processing in progress">
+                    Running
+                </span>
+            </h3>
+            <p id="status-text" role="status" aria-live="polite">Processing video…</p>
 
-            <div class="progress-container">
+            <div class="progress-container" role="progressbar"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                 aria-label="Processing progress">
                 <div id="progress-bar" class="progress-bar"></div>
             </div>
 
-            <p id="progress-text">0%</p>
+            <p id="progress-text" aria-live="polite">0%</p>
         {% endif %}
+
     </div>
 
-   <div class="right-panel">
-    <div class="video-section">
-        <h2>
-            {% if processing %}
-                Uploaded Video
+    <div class="right-panel">
+
+        <div class="video-section">
+            <h2>
+                {% if processing %}
+                    Uploaded video
+                {% else %}
+                    Processed video
+                {% endif %}
+            </h2>
+
+            {% if processing and original_video %}
+                <video controls aria-label="Uploaded video awaiting processing">
+                    <source src="{{ url_for('static', filename=original_video) }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <p>Video is being processed — this may take a moment.</p>
+
+            {% elif processed_video %}
+                <video controls autoplay aria-label="Processed video with pothole detections">
+                    <source src="{{ url_for('static', filename=processed_video) }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+
             {% else %}
-                Processed Video
-            {% endif %}
-        </h2>
-
-        {% if processing and original_video %}
-            <video controls>
-                <source src="{{ url_for('static', filename=original_video) }}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-            <p>Video is being processed...</p>
-
-        {% elif processed_video %}
-            <video controls autoplay>
-                <source src="{{ url_for('static', filename=processed_video) }}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-
-        {% else %}
-            <p>No video yet.</p>
-        {% endif %}
-    </div>
-
-    <div class="pothole-section">
-        <h3>Detected Potholes</h3>
-        <div class="crops">
-            {% if crop_paths %}
-                {% for crop in crop_paths %}
-                    <img class="crop-img" src="{{ url_for('static', filename=crop) }}" alt="Pothole Crop">
-                {% endfor %}
-            {% else %}
-                <p>No pothole crops yet.</p>
+                <p>No video uploaded yet. Use the panel on the left to get started.</p>
             {% endif %}
         </div>
-    </div>
-</div>
 
+        <div class="pothole-section">
+            <h3>Detected potholes</h3>
+            <div class="crops" role="list" aria-label="Cropped pothole detections">
+                {% if crop_paths %}
+                    {% for crop in crop_paths %}
+                        <img class="crop-img"
+                             role="listitem"
+                             src="{{ url_for('static', filename=crop) }}"
+                             alt="Pothole detection crop {{ loop.index }}">
+                    {% endfor %}
+                {% else %}
+                    <p>No detections yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
 </div>
 
 {% if processing and task_id %}

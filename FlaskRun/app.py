@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
-import static_ffmpeg
 import os
 import cv2
 import torch
@@ -148,7 +147,7 @@ def process_video(input_path, filename, task_id):
     tasks[task_id]["status"] = "encoding"
     tasks[task_id]["progress"] = 0
 
-    ffmpeg_path = static_ffmpeg.get_or_fetch_platform_executables_else_raise()[0]
+    ffmpeg_path = "ffmpeg"
 
     # Re-encode with FFmpeg, parsing progress from stderr
     process = subprocess.Popen([
