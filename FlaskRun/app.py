@@ -15,12 +15,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, ".."))
 from Model.road_classification import RoadDetectionCNN
 
-#Data Base setup for Flask
-from Backend.editTable import connectDatabase, main
-
 #Flask Set up
 app = Flask(__name__, template_folder="FrontEnd")
 app.secret_key = "pothole-secret-key"
+
+#Data Base setup for Flask
+from Backend.editTable import connectDatabase, main
+main()
 
 #Folder declarations
 UPLOAD_FOLDER = "static/uploads"
@@ -516,9 +517,7 @@ def signup():
 ###########################
 @app.route("/logout")
 def logout():
-
     session.clear()
-
     return redirect(url_for("HomePage"))
 
 ###########################

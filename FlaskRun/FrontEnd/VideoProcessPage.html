@@ -44,10 +44,7 @@
                 </button>
             </form>
 
-            <a class="logout-btn" href="/logout">
-                Logout
-            </a>
-
+            <!--  Processing Bar  -->
             {% if processing %}
                 <h3>Processing Status
                     <span class="status-badge" aria-live="polite" aria-label="Processing in progress">
@@ -65,6 +62,11 @@
 
                 <p id="progress-text" aria-live="polite">0%</p>
             {% endif %}
+            
+            <!-- Logout Button -->
+            <a class="logout-btn" href="/logout">
+                Logout
+            </a>
 
         </div>
 
