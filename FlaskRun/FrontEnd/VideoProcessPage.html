@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}">
+</head>
+
+
+<body>
+
+    <div class="container">
+
+        <div class="left-panel">
+
+            <div class="title-row">
+                <img src="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}"
+                    alt="Pothole Detection Manager logo"
+                    class="panel-image">
+                <h2>Pothole Detection Manager</h2>
+            </div>
+
+            <div class="user-box">
+                <h2>User</h2>
+                <p>Hello {{ username }}</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <h2>Pages</h2>
+                <a href="/videoProcess">Upload Video</a>
+                <a href="/processedVideos">Processed Videos</a>
+            </nav>
+
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+                <div class="upload-box" role="region" aria-label="Video upload area">
+                    <input type="file" name="video" id="video-input" accept=".mp4,.avi,.mov" required
+                        aria-label="Select a video file (.mp4, .avi, .mov)">
+                </div>
+
+                <button type="submit" aria-label="Upload and process video">
+                    Run detection
+                </button>
+            </form>
+
+            <a class="logout-btn" href="/logout">
+                Logout
+            </a>
+
+            {% if processing %}
+                <h3>Processing Status
+                    <span class="status-badge" aria-live="polite" aria-label="Processing in progress">
+                        Running
+                    </span>
+                </h3>
+
+                <p id="status-text" role="status" aria-live="polite">Processing video…</p>
+
+                <div class="progress-container" role="progressbar"
+                    aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                    aria-label="Processing progress">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+
+                <p id="progress-text" aria-live="polite">0%</p>
+            {% endif %}
+
+        </div>
+
+        <div class="right-panel">
+
+            {% if saved_videos %}
+
+                <div class="video-section">
+                    <h2>Your Processed Videos</h2>
+
+                    {% for video in saved_videos %}
+                        <a class="saved-video-link" href="/savedVideo/{{ video[0] }}">
+                            <strong>Processed Video</strong>
+                            <span>{{ video[2] }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+
+            {% else %}
+
+                <div class="video-section">
+                    <div class="right-panel-top">
+                        <h2>
+                            {% if processing %}
+                                Uploaded video
+                            {% else %}
+                                Processed video
+                            {% endif %}
+                        </h2>
+
+                        <a class="processed-videos-btn" href="/processedVideos">
+                            Processed Videos
+                        </a>
+                    </div>
+
+                    {% if processing and original_video %}
+                        <video controls aria-label="Uploaded video awaiting processing">
+                            <source src="{{ url_for('static', filename=original_video) }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+
+                        <p>Video is being processed — this may take a moment.</p>
+
+                    {% elif processed_video %}
+                        <video controls autoplay aria-label="Processed video with pothole detections">
+                            <source src="{{ url_for('static', filename=processed_video) }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+
+                    {% else %}
+                        <p>No video uploaded yet. Use the panel on the left to get started.</p>
+                    {% endif %}
+                </div>
+
+                <div class="pothole-section">
+                    <h3>Detected potholes</h3>
+
+                    <div class="crops" role="list" aria-label="Cropped pothole detections">
+                        {% if crop_paths %}
+                            {% for crop in crop_paths %}
+                                <img class="crop-img"
+                                    role="listitem"
+                                    src="{{ url_for('static', filename=crop) }}"
+                                    alt="Pothole detection crop {{ loop.index }}">
+                            {% endfor %}
+                        {% else %}
+                            <p>No detections yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% endif %}
+
+        </div>
+    </div>
+
+    {% if processing and task_id %}
+    <script>
+    function checkProgress() {
+        fetch("/status/{{ task_id }}")
+            .then(response => response.json())
+            .then(data => {
+
+                if (data.status === "queued") {
+                    document.getElementById("status-text").textContent = "Waiting in queue...";
+                    document.getElementById("progress-bar").style.width = "0%";
+                    document.getElementById("progress-text").textContent = "0%";
+                }
+
+                else if (data.status === "processing") {
+                    document.getElementById("status-text").textContent = "Processing video...";
+                    document.getElementById("progress-text").textContent = data.progress + "%";
+                    document.getElementById("progress-bar").style.width = data.progress + "%";
+                }
+
+                else if (data.status === "encoding") {
+                    document.getElementById("status-text").textContent = "Encoding video for playback...";
+                    document.getElementById("progress-text").textContent = data.progress + "%";
+                    document.getElementById("progress-bar").style.width = data.progress + "%";
+                }
+
+                else if (data.status === "done") {
+                    document.getElementById("progress-text").textContent = "100%";
+                    document.getElementById("progress-bar").style.width = "100%";
+                    window.location.href = "/result/{{ task_id }}";
+                }
+
+                else if (data.status === "error") {
+                    document.getElementById("status-text").textContent = "Error during processing.";
+                }
+            })
+            .catch(error => {
+                console.error("Error checking status:", error);
+            });
+    }
+
+    setInterval(checkProgress, 500);
+    </script>
+    {% endif %}
+
+</body>
+</html>

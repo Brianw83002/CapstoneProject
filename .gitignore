@@ -12,3 +12,6 @@
 
 # Ignore everything in crops folder
 FlaskRun/static/crops/
+
+# SQLite database
+FlaskRun/Backend/users.db

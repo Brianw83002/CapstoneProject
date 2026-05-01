@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}">
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="left-panel">
+        <div class="title-row">
+            <img src="{{ url_for('static', filename='potholeImage/pothole-clipart.jpg') }}"
+                 alt="Pothole Detection Manager logo"
+                 class="panel-image">
+            <h2>Pothole Detection Manager</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/">Home</a>
+            <a href="/videoProcess">Video Processing</a>
+            <a href="/about">About Us</a>
+            <a href="/Login">Login / Sign Up</a>
+        </nav>
+    </div>
+
+    <div class="right-panel">
+        <div class="about-card">
+            <h1>Pothole Detection Manager</h1>
+            <p>
+                Upload road videos and use an AI model to detect potholes.
+            </p>
+            <p>
+                Login or sign up using the sidebar, then go to video processing to upload a video.
+            </p>
+            <a class="back-link" href="/Login">Start Video Processing</a>
+        </div>
+    </div>
+
+</div>
+
+</body>

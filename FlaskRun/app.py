@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 import os
 import cv2
 import torch
@@ -9,13 +9,20 @@ import threading
 import uuid
 import subprocess
 
+
 # opens Model Folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, ".."))
 from Model.road_classification import RoadDetectionCNN
 
-app = Flask(__name__, template_folder="FrontEnd")
+#Data Base setup for Flask
+from Backend.editTable import connectDatabase, main
 
+#Flask Set up
+app = Flask(__name__, template_folder="FrontEnd")
+app.secret_key = "pothole-secret-key"
+
+#Folder declarations
 UPLOAD_FOLDER = "static/uploads"
 OUTPUT_FOLDER = "static/outputs"
 CROPS_FOLDER = "static/crops"
@@ -187,29 +194,132 @@ def process_video(input_path, filename, task_id):
     tasks[task_id]["processed_video"] = f"outputs/{web_output_filename}"
     tasks[task_id]["crop_paths"] = crop_paths
 
+###################################
+#           FLASK ROUTES   
+###################################
 
 @app.route("/")
-def home():
+def HomePage():
+    return render_template("Home.html")
+
+
+@app.route("/videoProcess")
+def videoProcess():
+
+    if "username" not in session:
+        return redirect(url_for("LoginPage"))
+
     return render_template(
-        "HomePage.html",
+        "VideoProcessPage.html",
+        username=session["username"],
         processed_video=None,
         crop_paths=[],
         original_video=None,
         processing=False,
-        task_id=None
+        task_id=None,
+        saved_videos=None
     )
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+@app.route("/Login")
+def LoginPage():
+    return render_template("Login.html")
+
+@app.route("/processedVideos")
+def processedVideos():
+
+    if "username" not in session:
+        return redirect(url_for("LoginPage"))
+
+    connection = connectDatabase()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+    SELECT video_name, processed_video_path, created_at
+    FROM videos
+    WHERE username = ?
+    ORDER BY created_at DESC
+    """, (session["username"],))
+
+    saved_videos = cursor.fetchall()
+
+    connection.close()
+
+    return render_template(
+        "VideoProcessPage.html",
+        username=session["username"],
+        processed_video=None,
+        crop_paths=[],
+        original_video=None,
+        processing=False,
+        task_id=None,
+        saved_videos=saved_videos
+    )
+
+@app.route("/savedVideo/<video_name>")
+def savedVideo(video_name):
+
+    if "username" not in session:
+        return redirect(url_for("LoginPage"))
+
+    connection = connectDatabase()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+    SELECT processed_video_path
+    FROM videos
+    WHERE video_name = ? AND username = ?
+    """, (video_name, session["username"]))
+
+    video = cursor.fetchone()
+
+    if not video:
+        connection.close()
+        return "Video not found", 404
+
+    cursor.execute("""
+    SELECT photo_path
+    FROM video_photos
+    WHERE video_name = ?
+    """, (video_name,))
+
+    photos = cursor.fetchall()
+
+    connection.close()
+
+    crop_paths = [photo[0] for photo in photos]
+
+    return render_template(
+        "VideoProcessPage.html",
+        username=session["username"],
+        processed_video=video[0],
+        crop_paths=crop_paths,
+        original_video=None,
+        processing=False,
+        task_id=None,
+        saved_videos=None
+    )
+
+#########################################################
 
 @app.route("/upload", methods=["POST"])
 def upload_video():
     print("Upload route hit")
 
+    # Make sure user is logged in
+    if "username" not in session:
+        return redirect(url_for("LoginPage"))
+
     if "video" not in request.files:
-        return redirect(url_for("home"))
+        return redirect(url_for("HomePage"))
 
     file = request.files["video"]
+
     if file.filename == "":
-        return redirect(url_for("home"))
+        return redirect(url_for("HomePage"))
 
     filename = file.filename
     save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -220,6 +330,7 @@ def upload_video():
     tasks[task_id] = {
         "status": "queued",
         "progress": 0,
+        "username": session["username"],
         "original_video": f"uploads/{filename}",
         "processed_video": None,
         "crop_paths": []
@@ -237,12 +348,14 @@ def processing_page(task_id):
         return "Task not found", 404
 
     return render_template(
-        "HomePage.html",
+        "VideoProcessPage.html",
+        username=tasks[task_id]["username"],
         processed_video=None,
         crop_paths=[],
         original_video=tasks[task_id]["original_video"],
         processing=True,
-        task_id=task_id
+        task_id=task_id,
+        saved_videos=None
     )
 
 
@@ -259,6 +372,7 @@ def check_status(task_id):
 
 @app.route("/result/<task_id>")
 def result_page(task_id):
+
     if task_id not in tasks:
         return "Task not found", 404
 
@@ -274,16 +388,148 @@ def result_page(task_id):
         os.path.exists(os.path.join("static", tasks[task_id]["processed_video"]))
     )
 
+    username = tasks[task_id]["username"]
+    video_name = task_id
+    original_video = tasks[task_id]["original_video"]
+    processed_video = tasks[task_id]["processed_video"]
+    crop_paths = tasks[task_id]["crop_paths"]
+
+    # Save processed video to database
+    connection = connectDatabase()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+    INSERT OR IGNORE INTO videos (
+        video_name,
+        username,
+        original_video_path,
+        processed_video_path
+    )
+    VALUES (?, ?, ?, ?)
+    """, (video_name, username, original_video, processed_video))
+
+    for crop in crop_paths:
+        cursor.execute("""
+        INSERT INTO video_photos (
+            video_name,
+            photo_path
+        )
+        VALUES (?, ?)
+        """, (video_name, crop))
+
+    connection.commit()
+    connection.close()
+
     return render_template(
-        "HomePage.html",
-        processed_video=tasks[task_id]["processed_video"],
-        crop_paths=tasks[task_id]["crop_paths"],
-        original_video=tasks[task_id]["original_video"],
+        "VideoProcessPage.html",
+        username=username,
+        processed_video=processed_video,
+        crop_paths=crop_paths,
+        original_video=original_video,
         processing=False,
-        task_id=None
+        task_id=None,
+        saved_videos=None
     )
 
 
+###########################
+#   Login 
+###########################
+@app.route("/login", methods=["POST"])
+def login():
+
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    connection = connectDatabase()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+    SELECT *
+    FROM users
+    WHERE username = ? AND password = ?
+    """, (username, password))
+
+    user = cursor.fetchone()
+
+    connection.close()
+
+    if user:
+        session["username"] = username
+        return redirect(url_for("videoProcess"))
+
+    return render_template(
+        "Login.html",
+        login_error="Invalid username or password"
+    )
+
+###########################
+#   Sign Up
+###########################
+@app.route("/signup", methods=["POST"])
+def signup():
+
+    # Get form data
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    # Connect to database
+    connection = connectDatabase()
+    cursor = connection.cursor()
+
+    # Check If Username Exists
+    cursor.execute("""
+    SELECT *
+    FROM users
+    WHERE username = ?
+    """, (username,))
+    existingUser = cursor.fetchone()
+
+
+    # Username already exists
+    if existingUser:
+        connection.close()
+        return render_template(
+            "Login.html",
+            signup_error="Username already exists"
+        )
+
+
+    # Create New User if Username not Taken
+    cursor.execute("""
+    INSERT INTO users (username, password)
+    VALUES (?, ?)
+    """, (username, password))
+
+
+    # Save Changes and Close Database
+    connection.commit()
+    print("User created successfully.")
+    connection.close()
+
+    # Save Session and Redirect User
+    session["username"] = username
+    return redirect(url_for("videoProcess"))
+
+###########################
+#   Logout
+###########################
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect(url_for("HomePage"))
+
+###########################
+#   Main
+###########################
 if __name__ == "__main__":
+
+    # Run database setup first
+    print("Setting up SQL Database")
+    main()
+    print()
+
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
