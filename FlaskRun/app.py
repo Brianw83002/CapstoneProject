@@ -134,12 +134,26 @@ def process_video(input_path, filename, task_id):
             crop_rgb = cv2.cvtColor(pothole_crop, cv2.COLOR_BGR2RGB)
             input_tensor = transform(crop_rgb).unsqueeze(0).to(device)
 
+            ####################        MAX: THIS IS THE TEMP FIX: DELETE THIS  AND UNCOMMENT THE CODE UNDER ########################################################
             with torch.no_grad():
                 outputs = model_classification(input_tensor)
                 # Convert outputs to probabilities
                 probabilities = torch.softmax(outputs, dim=1)[0]
+
+                # Bias multipliers for each class
+                weights = torch.tensor(
+                    [1.0, 5.0, 10.0, 100000.0],
+                    device=device
+                )
+
+                # Apply weighting
+                weighted_probabilities = probabilities * weights
+
+                # Normalize again
+                weighted_probabilities = weighted_probabilities / weighted_probabilities.sum()
+
                 # Get winning class
-                confidence, predicted = torch.max(probabilities, 0)
+                confidence, predicted = torch.max(weighted_probabilities, 0)
                 road_class_name = model_classification.classes[predicted.item()]
                 road_confidence = confidence.item()
                 # Print all class confidences
@@ -149,7 +163,24 @@ def process_video(input_path, filename, task_id):
                 for i, class_name in enumerate(model_classification.classes):
                     print(f"{class_name}: {probabilities[i].item():.4f}")
 
+            #######################################  UNCOMMENT THIS SECTION   ##############################################################################
+            #with torch.no_grad():
+            #    outputs = model_classification(input_tensor)
+            #    # Convert outputs to probabilities
+            #    probabilities = torch.softmax(outputs, dim=1)[0]
+            #    
+            #    # Get winning class
+            #    confidence, predicted = torch.max(probabilities, 0)
+            #    road_class_name = model_classification.classes[predicted.item()]
+            #    road_confidence = confidence.item()
+            #    # Print all class confidences
+            #    print("\n---------------------------")
+            #    print(f"Detected Class: {road_class_name}")
+            #    print(f"Confidence: {road_confidence:.2f}")
+            #    for i, class_name in enumerate(model_classification.classes):
+            #        print(f"{class_name}: {probabilities[i].item():.4f}")      
 
+            #########################################   END OF: UNCOMMENT THIS SECTION      ###########################################################################
 
 
             
