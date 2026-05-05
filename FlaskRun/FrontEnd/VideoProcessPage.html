@@ -71,7 +71,6 @@
         </div>
 
         <div class="right-panel">
-
             {% if saved_videos %}
 
                 <div class="video-section">
@@ -123,23 +122,29 @@
 
                 <div class="pothole-section">
                     <h3>Detected potholes</h3>
-
-                    <div class="crops" role="list" aria-label="Cropped pothole detections">
-                        {% if crop_paths %}
-                            {% for crop in crop_paths %}
-                                <img class="crop-img"
-                                    role="listitem"
-                                    src="{{ url_for('static', filename=crop) }}"
-                                    alt="Pothole detection crop {{ loop.index }}">
-                            {% endfor %}
-                        {% else %}
-                            <p>No detections yet.</p>
-                        {% endif %}
-                    </div>
+                    {% if crop_paths %}
+                        {% set classes = ["D00", "D10", "D20", "D40"] %}
+                        {% for class_name in classes %}
+                            <h4>{{ class_name }}</h4>
+                            <div class="crops" role="list" aria-label="{{ class_name }} pothole detections">
+                                {% for crop in crop_paths %}
+                                    {% if crop.class == class_name %}
+                                        <div class="crop-card" role="listitem">
+                                            <img class="crop-img"
+                                                src="{{ url_for('static', filename=crop.path) }}"
+                                                alt="{{ class_name }} pothole detection crop">
+                                            <p class="crop-label">{{ crop.class }}</p>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>No detections yet.</p>
+                    {% endif %}
                 </div>
 
             {% endif %}
-
         </div>
     </div>
 

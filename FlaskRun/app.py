@@ -69,7 +69,7 @@ tasks = {}
 
 
 def process_video(input_path, filename, task_id):
-    FRAME_SKIP = 2
+    FRAME_SKIP = 1
 
     base_name = os.path.splitext(filename)[0]
     raw_output_path = os.path.join(app.config["OUTPUT_FOLDER"], f"raw_{base_name}.avi")
@@ -112,12 +112,22 @@ def process_video(input_path, filename, task_id):
             continue
 
         annotated_frame = frame.copy()
-        results = model_potholes(frame, conf=0.2, imgsz=512, verbose=False)
+        results = model_potholes(frame, conf=0.15, imgsz=512, verbose=False)
 
         for box in results[0].boxes.xyxy:
             x1, y1, x2, y2 = map(int, box)
 
-            pothole_crop = frame[y1:y2, x1:x2]
+            # Add padding around the detected pothole box
+            padding = 40    
+            x1_padded = max(0, x1 - padding)
+            y1_padded = max(0, y1 - padding)
+            x2_padded = min(frame.shape[1], x2 + padding)
+            y2_padded = min(frame.shape[0], y2 + padding)
+
+            # Use padded crop for classification
+            pothole_crop = frame[y1_padded:y2_padded, x1_padded:x2_padded]
+
+
             if pothole_crop.shape[0] < 32 or pothole_crop.shape[1] < 32:
                 continue
 
@@ -126,13 +136,28 @@ def process_video(input_path, filename, task_id):
 
             with torch.no_grad():
                 outputs = model_classification(input_tensor)
-                _, predicted = torch.max(outputs, 1)
+                # Convert outputs to probabilities
+                probabilities = torch.softmax(outputs, dim=1)[0]
+                # Get winning class
+                confidence, predicted = torch.max(probabilities, 0)
                 road_class_name = model_classification.classes[predicted.item()]
+                road_confidence = confidence.item()
+                # Print all class confidences
+                print("\n---------------------------")
+                print(f"Detected Class: {road_class_name}")
+                print(f"Confidence: {road_confidence:.2f}")
+                for i, class_name in enumerate(model_classification.classes):
+                    print(f"{class_name}: {probabilities[i].item():.4f}")
+
+
+
+
+            
 
             cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
             cv2.putText(
                 annotated_frame,
-                road_class_name,
+                f"{road_class_name} {road_confidence:.2f}",
                 (x1, y1 - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
@@ -143,7 +168,10 @@ def process_video(input_path, filename, task_id):
             crop_filename = f"{base_name}_f{frame_index}_c{crop_index}.jpg"
             crop_save_path = os.path.join(app.config["CROPS_FOLDER"], crop_filename)
             cv2.imwrite(crop_save_path, pothole_crop)
-            crop_paths.append(f"crops/{crop_filename}")
+            crop_paths.append({
+                "path": f"crops/{crop_filename}",
+                "class": road_class_name
+            })
             crop_index += 1
 
         out.write(annotated_frame)
@@ -282,7 +310,7 @@ def savedVideo(video_name):
         return "Video not found", 404
 
     cursor.execute("""
-    SELECT photo_path
+    SELECT photo_path, classification
     FROM video_photos
     WHERE video_name = ?
     """, (video_name,))
@@ -291,7 +319,13 @@ def savedVideo(video_name):
 
     connection.close()
 
-    crop_paths = [photo[0] for photo in photos]
+    crop_paths = [
+        {
+            "path": photo[0],
+            "class": photo[1]
+        }
+        for photo in photos
+    ]
 
     return render_template(
         "VideoProcessPage.html",
@@ -413,10 +447,15 @@ def result_page(task_id):
         cursor.execute("""
         INSERT INTO video_photos (
             video_name,
-            photo_path
+            photo_path,
+            classification
         )
-        VALUES (?, ?)
-        """, (video_name, crop))
+        VALUES (?, ?, ?)
+        """, (
+            video_name,
+            crop["path"],
+            crop["class"]
+        ))
 
     connection.commit()
     connection.close()

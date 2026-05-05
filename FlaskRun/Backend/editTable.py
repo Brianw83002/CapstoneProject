@@ -93,6 +93,31 @@ def createVideoPhotosTable(cursor):
 
 
 ###################################
+#   Add Classification Column
+###################################
+def addClassificationColumn(cursor):
+
+    # Get existing columns
+    cursor.execute("""
+    PRAGMA table_info(video_photos)
+    """)
+
+    columns = [column[1] for column in cursor.fetchall()]
+
+    # Only add if it doesn't exist
+    if "classification" not in columns:
+
+        cursor.execute("""
+        ALTER TABLE video_photos
+        ADD COLUMN classification TEXT
+        """)
+
+        print("classification column added successfully.")
+
+    else:
+        print("classification column already exists.")
+
+###################################
 #               Main
 ###################################
 def main():
@@ -126,8 +151,9 @@ def main():
         print("Video photos table already exists.")
     else:
         createVideoPhotosTable(cursor)
+    addClassificationColumn(cursor)
 
-
+    
     ###################################
     #       Save Changes
     ###################################
